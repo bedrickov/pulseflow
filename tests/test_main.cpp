@@ -141,6 +141,18 @@ void test_pipeline_filtering() {
     TEST_ASSERT(m.emitted_events == 1, "Emitted must be 1");
 }
 
+void test_log_parser_escaped_quotes() {
+    std::string json = "{\"level\":\"ERROR\",\"service\":\"payment\",\"msg\":\"Failed: \\\"timeout error\\\"\"}";
+    auto ev_opt = pulseflow::LogParser::parse_line(json);
+    TEST_ASSERT(ev_opt.has_value(), "JSON line with escaped quotes must parse");
+    TEST_ASSERT(ev_opt.value().message == "Failed: \\\"timeout error\\\"", "Escaped quote inside string must be preserved");
+
+    std::string kv = "level=INFO msg=\"User said \\\"hello world\\\"\"";
+    auto kv_opt = pulseflow::LogParser::parse_line(kv);
+    TEST_ASSERT(kv_opt.has_value(), "KV line with escaped quote must parse");
+    TEST_ASSERT(kv_opt.value().message == "User said \"hello world\"", "KV quote should unescape");
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "       PulseFlow C++20 Test Suite       \n";
@@ -149,6 +161,7 @@ int main() {
     RUN_TEST(test_ring_buffer_spsc);
     RUN_TEST(test_log_parser_json);
     RUN_TEST(test_log_parser_key_value);
+    RUN_TEST(test_log_parser_escaped_quotes);
     RUN_TEST(test_line_iterator);
     RUN_TEST(test_pipeline_filtering);
 

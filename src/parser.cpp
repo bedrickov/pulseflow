@@ -27,10 +27,16 @@ std::string_view LogParser::extract_json_field(std::string_view json, std::strin
     if (pos >= json.size()) return {};
 
     if (json[pos] == '"') {
-        // Quoted string value
+        // Quoted string value (handle escaped quotes properly)
         ++pos;
-        std::size_t end = json.find('"', pos);
-        if (end == std::string_view::npos) return {};
+        std::size_t end = pos;
+        while (end < json.size()) {
+            if (json[end] == '"' && (end == pos || json[end - 1] != '\\')) {
+                break;
+            }
+            ++end;
+        }
+        if (end >= json.size()) return {};
         return json.substr(pos, end - pos);
     } else {
         // Numeric, boolean or literal value
@@ -119,7 +125,10 @@ std::optional<TelemetryEvent> LogParser::parse_key_value(std::string_view line) 
         if (line[i] == '"') {
             ++i;
             std::size_t val_start = i;
-            while (i < line.size() && line[i] != '"') {
+            while (i < line.size()) {
+                if (line[i] == '"' && (i == val_start || line[i - 1] != '\\')) {
+                    break;
+                }
                 ++i;
             }
             val = line.substr(val_start, i - val_start);
@@ -132,14 +141,29 @@ std::optional<TelemetryEvent> LogParser::parse_key_value(std::string_view line) 
             val = line.substr(val_start, i - val_start);
         }
 
+        // Helper to unescape \" -> "
+        auto unescape = [](std::string_view sv) {
+            std::string out;
+            out.reserve(sv.size());
+            for (std::size_t k = 0; k < sv.size(); ++k) {
+                if (sv[k] == '\\' && k + 1 < sv.size() && sv[k + 1] == '"') {
+                    out.push_back('"');
+                    ++k;
+                } else {
+                    out.push_back(sv[k]);
+                }
+            }
+            return out;
+        };
+
         if (key == "level" || key == "lvl") {
             event.level = string_to_level(val);
         } else if (key == "msg" || key == "message") {
-            event.message = std::string(val);
+            event.message = unescape(val);
         } else if (key == "component" || key == "comp" || key == "service") {
-            event.component = std::string(val);
+            event.component = unescape(val);
         } else {
-            event.attributes.push_back({std::string(key), std::string(val)});
+            event.attributes.push_back({std::string(key), unescape(val)});
         }
     }
 
