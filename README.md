@@ -1,4 +1,4 @@
-# PulseFlow
+# NanoSink
 
 <div align="center">
 
@@ -25,7 +25,7 @@
 2. **Аллокации памяти (Heap Churn)**: Конкатенация строк и создание промежуточных объектов перегружает аллокатор и вызывает задержки сборщика мусора.
 3. **Накладные расходы ввода-вывода (I/O Bottleneck)**: Множественные системные вызовы `write()` / `WriteFile()` тормозят весь процессорный пайплайн.
 
-**PulseFlow** спроектирован с упором на предельно низкую задержку и максимальную пропускную способность:
+**NanoSink** спроектирован с упором на предельно низкую задержку и максимальную пропускную способность:
 - **Lock-Free SPSC RingBuffer**: Атомарные указатели с семантикой `acquire-release` и выравниванием по границе кэш-линии (`alignas(64)`), что полностью исключает False Sharing между ядрами.
 - **Zero-Copy Memory-Mapped I/O**: Чтение гигабайтных лог-файлов напрямую через отображение страниц виртуальной памяти OS (`CreateFileMapping` / `mmap`) без промежуточного копирования байтов в память приложения.
 - **Zero-Allocation Parser**: Парсинг JSON и Key-Value (Logfmt) форматов осуществляется исключительно через срезы `std::string_view` без динамических аллокаций во время итерации.
@@ -39,7 +39,7 @@
 
 | Сценарий | Пропускная способность | Средняя задержка на событие | Контеншен потоков |
 | :--- | :--- | :--- | :--- |
-| **PulseFlow Lock-Free RingBuffer** | **~14.8 - 18.2 Mops/s** | **~55 - 68 нс / лог** | **0% (Lock-Free)** |
+| **NanoSink Lock-Free RingBuffer** | **~14.8 - 18.2 Mops/s** | **~55 - 68 нс / лог** | **0% (Lock-Free)** |
 | Стандартный `std::mutex + queue` | ~1.8 Mops/s | ~550 нс / лог | Высокий (Thread Sleep/Wakeup) |
 | Синхронная запись в `stdout` | ~0.15 Mops/s | ~6 600 нс / лог | Блокирующий I/O |
 
@@ -48,10 +48,10 @@
 ## Архитектура
 
 ```
-pulseflow/
+NanoSink/
 ├── .github/workflows/
 │   └── ci.yml                      # Автоматическая сборка и запуск тестов в GitHub Actions
-├── include/pulseflow/
+├── include/NanoSink/
 │   ├── ring_buffer.hpp             # Lock-free SPSC кольцевой буфер с выравниванием по кэш-линиям
 │   ├── event.hpp                   # Модель структурированного события (TelemetryEvent, LogLevel)
 │   ├── mmap_reader.hpp             # Кроссплатформенный zero-copy MMF-ридер
@@ -97,7 +97,7 @@ pulseflow/
 ```bash
 cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
-.\build\pulseflow_tests.exe
+.\build\NanoSink_tests.exe
 ```
 
 ---
@@ -106,22 +106,22 @@ cmake --build build --config Release
 
 ```bash
 # Запуск встроенного микробенчмарка на 5 миллионов событий
-pulseflow bench --events 5000000
+NanoSink bench --events 5000000
 
 # Запуск синхронного бенчмарка для сравнения
-pulseflow bench --events 1000000 --sync
+NanoSink bench --events 1000000 --sync
 
 # Потоковая обработка лог-файла через Mmap с фильтрацией по уровню ошибки
-pulseflow stream --file app.log --level ERROR
+NanoSink stream --file app.log --level ERROR
 
 # Фильтрация по компоненту и поисковому запросу с записью в файл
-pulseflow stream --file server.log --component auth --query "invalid password" --out suspicious_logins.log
+NanoSink stream --file server.log --component auth --query "invalid password" --out suspicious_logins.log
 
 # Парсинг и форматирование произвольной строки лога
-pulseflow parse "level=WARN comp=payment user_id=4412 msg=\"Payment webhook timed out\""
+NanoSink parse "level=WARN comp=payment user_id=4412 msg=\"Payment webhook timed out\""
 
 # Вывод справки по параметрам
-pulseflow --help
+NanoSink --help
 ```
 
 ---
