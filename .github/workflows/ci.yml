@@ -24,4 +24,4 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Run Tests
-        run: .\build\pulseflow_tests.exe
+        run: .\build\NanoSink_tests.exe
