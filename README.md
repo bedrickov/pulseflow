@@ -130,4 +130,4 @@ NanoSink --help
 
 Проект распространяется под открытой лицензией [Apache License 2.0](LICENSE).
 
-<!-- verified: 2026-10-30 -->
+<!-- verified: 2026-10-31 -->
